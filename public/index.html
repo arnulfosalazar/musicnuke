@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpotifyNuke</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☢</text></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="11" fill="currentColor"/>
+        <g fill="#0e1428">
+          <circle cx="12" cy="12" r="2"/>
+          <path d="M12 12 L7.5 4.2 A9 9 0 0 1 16.5 4.2 Z"/>
+          <path d="M12 12 L21 12 A9 9 0 0 1 16.5 19.8 Z"/>
+          <path d="M12 12 L7.5 19.8 A9 9 0 0 1 3 12 Z"/>
+        </g>
+        <circle cx="12" cy="12" r="3.2" fill="currentColor"/>
+        <circle cx="12" cy="12" r="2" fill="#0e1428"/>
+      </svg>
+      <span>SpotifyNuke</span>
+    </div>
+    <div class="user" id="user" hidden>
+      <img id="user-avatar" alt="">
+      <span id="user-name"></span>
+      <button class="link-btn" id="logout">Log out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Logged out -->
+    <section class="view" id="view-login" hidden>
+      <div class="hero">
+        <h1>Nuke an artist or song<br>from your playlists.</h1>
+        <p class="muted">Pick what goes, pick where from. No fuss or hassle.</p>
+        <a class="btn btn-primary btn-lg" href="/login">Log in with Spotify</a>
+        <p class="error" id="login-error" hidden></p>
+      </div>
+    </section>
+
+    <!-- Step 1: targets -->
+    <section class="view" id="view-targets" hidden>
+      <ol class="steps"><li class="on">Target</li><li>Playlists</li><li>Review</li></ol>
+      <h2>What do you want to nuke?</h2>
+      <p class="muted">Search for an artist or song. Add as many as you like.</p>
+
+      <div class="search">
+        <input id="search" type="search" placeholder="Artist or song name" autocomplete="off" spellcheck="false">
+        <div class="results" id="results" hidden></div>
+      </div>
+
+      <ul class="chips" id="chips"></ul>
+      <p class="hint" id="chips-hint" hidden>
+        Tap <b>Nuke</b> on a chip to switch it to <b>Keep</b>. Kept songs and artists are protected,
+        so you can nuke an artist but hold on to one song or a feature.
+      </p>
+
+      <details class="options">
+        <summary>Options</summary>
+        <label class="check">
+          <input type="checkbox" id="opt-features" checked>
+          <span><b>Include features.</b> Remove songs where the artist is featured, not just the lead.</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="opt-versions" checked>
+          <span><b>All versions of a song.</b> Also catch remasters, live takes, remixes and single/album copies.</span>
+        </label>
+      </details>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="to-playlists" disabled>Next: choose playlists</button>
+      </div>
+    </section>
+
+    <!-- Step 2: playlists -->
+    <section class="view" id="view-playlists" hidden>
+      <ol class="steps"><li class="done">Target</li><li class="on">Playlists</li><li>Review</li></ol>
+      <h2>Where from?</h2>
+      <p class="muted">Everything you can edit is selected. Untick anything you want left alone.</p>
+
+      <div class="pl-tools">
+        <input id="pl-filter" type="search" placeholder="Filter playlists" autocomplete="off">
+        <button class="link-btn" id="pl-all">All</button>
+        <button class="link-btn" id="pl-none">None</button>
+      </div>
+      <ul class="playlists" id="playlists"><li class="muted pad">Loading playlists…</li></ul>
+
+      <div class="actions">
+        <button class="btn btn-ghost" data-go="targets">Back</button>
+        <button class="btn btn-primary" id="scan">Scan <span id="pl-count"></span></button>
+      </div>
+    </section>
+
+    <!-- Progress (scan / nuke / undo) -->
+    <section class="view" id="view-progress" hidden>
+      <h2 id="progress-title">Scanning…</h2>
+      <div class="progress"><div class="bar" id="progress-bar"></div></div>
+      <p class="muted" id="progress-label"></p>
+    </section>
+
+    <!-- Step 3: review -->
+    <section class="view" id="view-review" hidden>
+      <ol class="steps"><li class="done">Target</li><li class="done">Playlists</li><li class="on">Review</li></ol>
+      <h2 id="review-title"></h2>
+      <p class="muted" id="review-sub"></p>
+      <div id="review-list"></div>
+      <div class="actions">
+        <button class="btn btn-ghost" data-go="playlists">Back</button>
+        <button class="btn btn-danger" id="nuke">Nuke</button>
+      </div>
+    </section>
+
+    <!-- Done -->
+    <section class="view" id="view-done" hidden>
+      <div class="blast" id="blast"></div>
+      <h2 class="center" id="done-title"></h2>
+      <p class="muted center" id="done-sub"></p>
+      <ul class="errors" id="done-errors"></ul>
+      <div class="actions center">
+        <button class="btn btn-ghost" id="undo">Undo</button>
+        <button class="btn btn-primary" id="again">Nuke something else</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="hovercard" id="hovercard" hidden></div>
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
