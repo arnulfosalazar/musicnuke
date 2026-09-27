@@ -39,9 +39,80 @@
       <div class="hero">
         <h1>Nuke an artist or song<br>from your playlists.</h1>
         <p class="muted">Pick what goes, pick where from. No fuss or hassle.</p>
-        <a class="btn btn-primary btn-lg" href="/login">Log in with Spotify</a>
+        <div class="login-options">
+          <div class="login-option">
+            <a class="btn btn-primary btn-lg" href="/login">Log in with Spotify</a>
+            <span class="login-caption">For approved accounts</span>
+          </div>
+          <div class="login-option">
+            <a class="btn btn-ghost btn-lg" id="own-login" href="#guide">Not approved? Use it anyway</a>
+            <span class="login-caption" id="own-caption">Free with your own Spotify app · <a href="#guide">see the guide</a></span>
+          </div>
+        </div>
         <p class="error" id="login-error" hidden></p>
       </div>
+    </section>
+
+    <!-- Own-app setup guide -->
+    <section class="view" id="view-guide" hidden>
+      <button class="link-btn back" data-go-login>← Back</button>
+      <h2>Use SpotifyNuke with your own Spotify app</h2>
+      <p class="muted">
+        Spotify only lets each app have 5 approved users. You can get around that by creating your own
+        free Spotify app and logging in through it. Takes about 5 minutes, and you only do it once.
+      </p>
+      <p class="note">You'll need <b>Spotify Premium</b>. Spotify requires it for anyone who creates an app.</p>
+
+      <ol class="guide">
+        <li>
+          <h3>Open the Spotify Developer Dashboard</h3>
+          <p>Go to <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a>,
+            log in with your normal Spotify account and accept the developer terms if asked.</p>
+        </li>
+        <li>
+          <h3>Create an app</h3>
+          <p>Click <b>Create app</b> and fill it in:</p>
+          <ul>
+            <li><b>App name / description:</b> anything, e.g. "My SpotifyNuke"</li>
+            <li><b>Redirect URI:</b> paste this exactly, then click <b>Add</b>:
+              <div class="copy-field">
+                <code id="redirect-uri">…</code>
+                <button class="btn btn-ghost btn-sm" id="copy-uri">Copy</button>
+              </div>
+            </li>
+            <li><b>Which API are you planning to use?</b> tick <b>Web API</b></li>
+          </ul>
+          <p>Agree to the terms and click <b>Save</b>.</p>
+        </li>
+        <li>
+          <h3>Add yourself as a user</h3>
+          <p>In your new app, open <b>Settings → User Management</b> and add your name and the email of your
+            Spotify account, if it isn't listed already.</p>
+        </li>
+        <li>
+          <h3>Copy your Client ID</h3>
+          <p>In <b>Settings → Basic Information</b>, copy the <b>Client ID</b> and paste it below.
+            You don't need the Client Secret, so never paste that anywhere.</p>
+          <form class="client-form" id="own-form">
+            <input id="client-id" type="text" placeholder="Client ID (32 letters and numbers)"
+              autocomplete="off" spellcheck="false" maxlength="64">
+            <button class="btn btn-primary" type="submit">Log in with my app</button>
+          </form>
+          <p class="error" id="client-error" hidden></p>
+          <p class="hint">Your Client ID is saved in this browser, so next time it's one click.</p>
+        </li>
+      </ol>
+
+      <details class="options">
+        <summary>Something went wrong?</summary>
+        <ul class="trouble">
+          <li><b>"INVALID_CLIENT: Invalid client"</b>: the Client ID is wrong. Copy it again from Basic Information.</li>
+          <li><b>"INVALID_CLIENT: Invalid redirect URI"</b>: the redirect URI on your app doesn't match exactly.
+            Copy it from step 2 and make sure you clicked <b>Add</b> and <b>Save</b>.</li>
+          <li><b>"Your account isn't approved"</b>: add your Spotify email under User Management (step 3).</li>
+          <li><b>It stopped working later</b>: check your Premium subscription is active.</li>
+        </ul>
+      </details>
     </section>
 
     <!-- Step 1: targets -->

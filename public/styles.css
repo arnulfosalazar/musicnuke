@@ -118,6 +118,123 @@ h2 {
 
 .hero .muted { font-size: 17px; margin-bottom: 32px; }
 
+.login-options {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.login-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 340px);
+}
+.login-option .btn { width: 100%; }
+.login-caption { font-size: 13px; color: var(--muted); }
+.login-caption a { color: var(--gold); }
+
+/* ---------- Guide ---------- */
+
+.back { margin: 0 0 12px -6px; }
+
+.note {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(240, 162, 2, 0.1);
+  color: var(--text);
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+
+.guide {
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  margin: 0;
+}
+
+.guide > li {
+  counter-increment: step;
+  position: relative;
+  padding: 0 0 26px 46px;
+}
+.guide > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--navy);
+  font-weight: 800;
+  font-size: 14px;
+}
+.guide > li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 14.5px;
+  top: 36px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--border);
+}
+
+.guide h3 { margin: 3px 0 6px; font-size: 16px; }
+.guide p, .guide li li { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+.guide b { color: var(--text); font-weight: 600; }
+.guide a, .trouble a { color: var(--gold); }
+.guide ul { padding-left: 18px; margin: 0 0 8px; }
+
+.copy-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+  padding: 6px 6px 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.copy-field code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+}
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+
+.client-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.client-form input {
+  flex: 1 1 240px;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 11px 14px;
+  outline: none;
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+  font-size: 14px;
+}
+.client-form input:focus { border-color: var(--gold); }
+.client-form + .error { margin: 8px 0 0; font-size: 14px; }
+
+.trouble { padding-left: 18px; color: var(--muted); font-size: 14px; }
+.trouble li { margin-bottom: 8px; }
+.trouble b { color: var(--text); }
+
 .steps {
   display: flex;
   gap: 8px;

@@ -48,32 +48,58 @@ function chunk(list, size) {
 
 // ---------- Auth ----------
 
-app.get('/login', (req, res) => {
-  const state = crypto.randomBytes(16).toString('hex');
-  session.setState(res, state);
+const CLIENT_ID_PATTERN = /^[0-9a-f]{32}$/i;
+
+function authorizeUrl(clientId, state, extra = {}) {
   const query = new URLSearchParams({
-    client_id: CLIENT_ID,
+    client_id: clientId,
     response_type: 'code',
     redirect_uri: REDIRECT_URI,
     scope: SCOPES,
     state,
-    show_dialog: 'false'
+    ...extra
   });
-  res.redirect(`https://accounts.spotify.com/authorize?${query}`);
+  return `https://accounts.spotify.com/authorize?${query}`;
+}
+
+// The redirect URI people must register on their own Spotify app.
+app.get('/config', (req, res) => {
+  res.json({ redirectUri: REDIRECT_URI });
+});
+
+// Approved accounts: log in through this site's own Spotify app.
+app.get('/login', (req, res) => {
+  const state = crypto.randomBytes(16).toString('hex');
+  session.setState(res, { state });
+  res.redirect(authorizeUrl(CLIENT_ID, state));
+});
+
+// Everyone else: log in through their own Spotify app using PKCE, which
+// needs only the (public) Client ID, never a Client Secret.
+app.get('/login/own', (req, res) => {
+  const clientId = String(req.query.client_id || '').trim();
+  if (!CLIENT_ID_PATTERN.test(clientId)) return res.redirect('/?error=bad_client_id');
+
+  const state = crypto.randomBytes(16).toString('hex');
+  const verifier = crypto.randomBytes(48).toString('base64url');
+  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+  session.setState(res, { state, verifier, clientId });
+  res.redirect(authorizeUrl(clientId, state, { code_challenge_method: 'S256', code_challenge: challenge }));
 });
 
 app.get('/callback', async (req, res) => {
   const { code, state, error } = req.query;
-  const expected = session.takeState(req, res);
+  const saved = session.takeState(req, res);
   if (error) return res.redirect(`/?error=${encodeURIComponent(error)}`);
-  if (!code || !state || state !== expected) return res.redirect('/?error=state_mismatch');
+  if (!code || !state || !saved || state !== saved.state) return res.redirect('/?error=state_mismatch');
 
+  const own = saved.clientId ? { clientId: saved.clientId, verifier: saved.verifier } : null;
   try {
-    session.setAuth(res, await spotify.exchangeCode(code));
+    session.setAuth(res, await spotify.exchangeCode(code, own));
     res.redirect('/');
   } catch (err) {
     console.error('Token exchange failed:', err.response?.data || err.message);
-    res.redirect('/?error=login_failed');
+    res.redirect(`/?error=${own ? 'own_login_failed' : 'login_failed'}`);
   }
 });
 
@@ -100,13 +126,25 @@ api.use((req, res, next) => {
   next();
 });
 
+// Called before long batches so the token (and, for own-app logins, the
+// single-use refresh token) is renewed once up front, not by parallel requests.
+api.post('/keepalive', async (req, res) => {
+  await spotify.refreshIfExpiring(req.auth, 15 * 60 * 1000);
+  res.json({ ok: true });
+});
+
 api.get('/me', async (req, res) => {
   const me = await spotify.call(req.auth, 'get', '/me');
   if (req.auth.userId !== me.id) {
     req.auth.userId = me.id;
     req.auth.changed = true;
   }
-  res.json({ id: me.id, name: me.display_name || me.id, image: pickImage(me.images) });
+  res.json({
+    id: me.id,
+    name: me.display_name || me.id,
+    image: pickImage(me.images),
+    ownApp: Boolean(req.auth.clientId)
+  });
 });
 
 api.get('/search', async (req, res) => {

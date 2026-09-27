@@ -70,6 +70,12 @@ async function pool(items, limit, fn) {
   await Promise.all(workers);
 }
 
+// Renews the login once before a batch of parallel requests, so they don't
+// each try to refresh it at the same time.
+async function renewSession() {
+  try { await api('/keepalive', {}); } catch { /* the batch surfaces real errors */ }
+}
+
 function setProgress(title, fraction, label) {
   $('#progress-title').textContent = title;
   $('#progress-bar').style.width = `${Math.round(fraction * 100)}%`;
@@ -78,18 +84,96 @@ function setProgress(title, fraction, label) {
 
 // ---------- Auth ----------
 
+// Per-browser conveniences; the app works fine if storage is unavailable.
+const store = {
+  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch { /* ignore */ } }
+};
+
+const CLIENT_ID_PATTERN = /^[0-9a-f]{32}$/i;
+
+function ownLoginUrl(clientId) {
+  return `/login/own?client_id=${encodeURIComponent(clientId)}`;
+}
+
 function showLogin(message) {
   $('#user').hidden = true;
   const err = $('#login-error');
   err.hidden = !message;
   err.textContent = message || '';
+
+  // Returning own-app users get a one-click login.
+  const savedId = store.get('sn_client_id');
+  const ownBtn = $('#own-login');
+  if (savedId) {
+    ownBtn.href = ownLoginUrl(savedId);
+    ownBtn.textContent = 'Log in with my Spotify app';
+    $('#own-caption').innerHTML = 'Using your own app · <a href="#guide">change it</a>';
+  } else {
+    ownBtn.href = '#guide';
+    ownBtn.textContent = 'Not approved? Use it anyway';
+    $('#own-caption').innerHTML = 'Free with your own Spotify app · <a href="#guide">see the guide</a>';
+  }
+  if (location.hash) history.replaceState(null, '', '/');
   show('login');
 }
+
+let redirectUri;
+async function showGuide() {
+  history.replaceState(null, '', '#guide');
+  $('#client-id').value = store.get('sn_client_id') || '';
+  $('#client-error').hidden = true;
+  show('guide');
+  if (!redirectUri) {
+    try {
+      redirectUri = (await fetch('/config').then(r => r.json())).redirectUri;
+    } catch {
+      redirectUri = `${location.origin}/callback`;
+    }
+  }
+  $('#redirect-uri').textContent = redirectUri;
+}
+
+document.addEventListener('click', e => {
+  const link = e.target.closest('a[href="#guide"]');
+  if (link) { e.preventDefault(); showGuide(); }
+  if (e.target.closest('[data-go-login]')) showLogin();
+  if (e.target.closest('a[href="/login"]')) store.set('sn_mode', 'site');
+  if (e.target.closest('a[href^="/login/own"]')) store.set('sn_mode', 'own');
+});
+
+$('#copy-uri').addEventListener('click', async () => {
+  const btn = $('#copy-uri');
+  try {
+    await navigator.clipboard.writeText(redirectUri);
+    btn.textContent = 'Copied';
+  } catch {
+    getSelection().selectAllChildren($('#redirect-uri'));
+    btn.textContent = 'Press Ctrl+C';
+  }
+  setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+});
+
+$('#own-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const clientId = $('#client-id').value.trim();
+  const err = $('#client-error');
+  if (!CLIENT_ID_PATTERN.test(clientId)) {
+    err.textContent = "That doesn't look like a Client ID. It should be 32 letters and numbers, from Settings → Basic Information.";
+    err.hidden = false;
+    return;
+  }
+  store.set('sn_client_id', clientId);
+  store.set('sn_mode', 'own');
+  location.href = ownLoginUrl(clientId);
+});
 
 const LOGIN_ERRORS = {
   access_denied: 'Spotify login was cancelled.',
   state_mismatch: 'Login check failed. Please try again.',
-  login_failed: 'Could not log in with Spotify. Check the app credentials and redirect URI.'
+  login_failed: 'Could not log in with Spotify. Please try again.',
+  bad_client_id: "That Client ID doesn't look right. Check it in the guide.",
+  own_login_failed: 'Login through your Spotify app failed. Check the redirect URI on your app matches the guide exactly.'
 };
 
 async function init() {
@@ -103,7 +187,11 @@ async function init() {
     if (err.status === 403) {
       // Development-mode Spotify apps reject accounts not on the allowlist.
       await fetch('/logout', { method: 'POST' });
-      showLogin("Your Spotify account hasn't been approved for this app yet. Ask the owner to add you.");
+      showLogin(store.get('sn_mode') === 'own'
+        ? "Spotify rejected this account for your app. Add your Spotify email under User Management in your app's settings (step 3 of the guide)."
+        : "Your Spotify account hasn't been approved for this site yet. Use your own Spotify app instead; it's free.");
+    } else if (location.hash === '#guide') {
+      showGuide();
     } else {
       showLogin(error && (LOGIN_ERRORS[error] || `Login failed: ${error}`));
     }
@@ -114,6 +202,7 @@ async function init() {
   const avatar = $('#user-avatar');
   if (state.me.image) avatar.src = state.me.image; else avatar.hidden = true;
   $('#user').hidden = false;
+  if (location.hash) history.replaceState(null, '', '/');
   show('targets');
   $('#search').focus();
 }
@@ -464,6 +553,7 @@ $('#scan').addEventListener('click', async () => {
   };
 
   show('progress');
+  await renewSession();
   setProgress('Scanning your playlists…', 0, `0 of ${plural(sources.length, 'playlist')}`);
 
   const results = new Map();
@@ -588,6 +678,7 @@ $('#nuke').addEventListener('click', async () => {
   const total = jobs.reduce((sum, j) => sum + j.items.length, 0);
 
   show('progress');
+  await renewSession();
   setProgress('Nuking…', 0, `0 of ${plural(total, 'song')}`);
 
   const removed = [];
@@ -668,6 +759,7 @@ $('#undo').addEventListener('click', async () => {
   const total = jobs.reduce((sum, j) => sum + j.items.length, 0);
 
   show('progress');
+  await renewSession();
   setProgress('Putting everything back…', 0, `0 of ${plural(total, 'song')}`);
 
   const errors = [];
