@@ -39,7 +39,11 @@ async function api(path, body) {
     state.me = null;
     showLogin('Your session expired. Log in again to continue.');
   }
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const err = new Error(data.error || `Request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 
@@ -95,8 +99,14 @@ async function init() {
 
   try {
     state.me = await api('/me');
-  } catch {
-    showLogin(error && (LOGIN_ERRORS[error] || `Login failed: ${error}`));
+  } catch (err) {
+    if (err.status === 403) {
+      // Development-mode Spotify apps reject accounts not on the allowlist.
+      await fetch('/logout', { method: 'POST' });
+      showLogin("Your Spotify account hasn't been approved for this app yet. Ask the owner to add you.");
+    } else {
+      showLogin(error && (LOGIN_ERRORS[error] || `Login failed: ${error}`));
+    }
     return;
   }
 

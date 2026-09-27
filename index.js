@@ -2,7 +2,7 @@ require('dotenv').config();
 const crypto = require('crypto');
 const path = require('path');
 const express = require('express');
-const session = require('express-session');
+const session = require('./lib/session');
 const spotify = require('./lib/spotify');
 const { findMatch } = require('./lib/match');
 
@@ -19,12 +19,7 @@ const SCOPES = [
 
 const app = express();
 app.use(express.json({ limit: '5mb' }));
-app.use(session({
-  secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
-  resave: false,
-  saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax' }
-}));
+// Local only; on Vercel, public/ is served straight from the CDN.
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Picks the smallest image that is still at least `min` pixels wide.
@@ -55,7 +50,7 @@ function chunk(list, size) {
 
 app.get('/login', (req, res) => {
   const state = crypto.randomBytes(16).toString('hex');
-  req.session.oauthState = state;
+  session.setState(res, state);
   const query = new URLSearchParams({
     client_id: CLIENT_ID,
     response_type: 'code',
@@ -69,13 +64,12 @@ app.get('/login', (req, res) => {
 
 app.get('/callback', async (req, res) => {
   const { code, state, error } = req.query;
+  const expected = session.takeState(req, res);
   if (error) return res.redirect(`/?error=${encodeURIComponent(error)}`);
-  if (!code || !state || state !== req.session.oauthState) return res.redirect('/?error=state_mismatch');
-  delete req.session.oauthState;
+  if (!code || !state || state !== expected) return res.redirect('/?error=state_mismatch');
 
   try {
-    await spotify.exchangeCode(req.sessionID, code);
-    req.session.loggedIn = true;
+    session.setAuth(res, await spotify.exchangeCode(code));
     res.redirect('/');
   } catch (err) {
     console.error('Token exchange failed:', err.response?.data || err.message);
@@ -84,8 +78,8 @@ app.get('/callback', async (req, res) => {
 });
 
 app.post('/logout', (req, res) => {
-  spotify.logout(req.sessionID);
-  req.session.destroy(() => res.json({ ok: true }));
+  session.clearAuth(res);
+  res.json({ ok: true });
 });
 
 // ---------- API ----------
@@ -93,20 +87,32 @@ app.post('/logout', (req, res) => {
 const api = express.Router();
 
 api.use((req, res, next) => {
-  if (!spotify.isLoggedIn(req.sessionID)) return res.status(401).json({ error: 'Not logged in' });
+  const auth = session.getAuth(req);
+  if (!auth) return res.status(401).json({ error: 'Not logged in' });
+  req.auth = auth;
+
+  // Re-issue the cookie when a token refresh happened during this request.
+  const json = res.json.bind(res);
+  res.json = body => {
+    if (auth.changed && res.statusCode < 400) session.setAuth(res, auth);
+    return json(body);
+  };
   next();
 });
 
 api.get('/me', async (req, res) => {
-  const me = await spotify.call(req.sessionID, 'get', '/me');
-  req.session.userId = me.id;
+  const me = await spotify.call(req.auth, 'get', '/me');
+  if (req.auth.userId !== me.id) {
+    req.auth.userId = me.id;
+    req.auth.changed = true;
+  }
   res.json({ id: me.id, name: me.display_name || me.id, image: pickImage(me.images) });
 });
 
 api.get('/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (!q) return res.json({ artists: [], tracks: [] });
-  const data = await spotify.call(req.sessionID, 'get', '/search', {
+  const data = await spotify.call(req.auth, 'get', '/search', {
     params: { q, type: 'artist,track', limit: 10 }
   });
   res.json({
@@ -123,8 +129,8 @@ api.get('/search', async (req, res) => {
 api.get('/artist/:id', async (req, res) => {
   const { id } = req.params;
   const [artist, albums] = await Promise.all([
-    spotify.call(req.sessionID, 'get', `/artists/${id}`),
-    spotify.call(req.sessionID, 'get', `/artists/${id}/albums`, {
+    spotify.call(req.auth, 'get', `/artists/${id}`),
+    spotify.call(req.auth, 'get', `/artists/${id}/albums`, {
       params: { include_groups: 'album,single', limit: 10 }
     }).catch(() => ({ items: [] }))
   ]);
@@ -154,10 +160,10 @@ api.get('/artist/:id', async (req, res) => {
 });
 
 api.get('/playlists', async (req, res) => {
-  const sid = req.sessionID;
-  const me = req.session.userId ? { id: req.session.userId } : await spotify.call(sid, 'get', '/me');
-  const playlists = await spotify.getAll(sid, '/me/playlists', { limit: 50 });
-  const liked = await spotify.call(sid, 'get', '/me/tracks', { params: { limit: 1 } });
+  const auth = req.auth;
+  const me = auth.userId ? { id: auth.userId } : await spotify.call(auth, 'get', '/me');
+  const playlists = await spotify.getAll(auth, '/me/playlists', { limit: 50 });
+  const liked = await spotify.call(auth, 'get', '/me/tracks', { params: { limit: 1 } });
 
   res.json({
     liked: { id: 'liked', name: 'Liked Songs', count: liked.total, editable: true },
@@ -173,12 +179,12 @@ api.get('/playlists', async (req, res) => {
   });
 });
 
-async function loadSource(sid, source) {
+async function loadSource(auth, source) {
   if (source === 'liked') {
-    const items = await spotify.getAll(sid, '/me/tracks', { limit: 50 });
+    const items = await spotify.getAll(auth, '/me/tracks', { limit: 50 });
     return items.map(it => ({ track: it.item || it.track, isLocal: false }));
   }
-  const items = await spotify.getAll(sid, `/playlists/${source}/items`, {
+  const items = await spotify.getAll(auth, `/playlists/${source}/items`, {
     limit: 50,
     additional_types: 'track'
   });
@@ -190,7 +196,7 @@ api.post('/scan', async (req, res) => {
   const { source, targets, options = {} } = req.body;
   if (!source || !Array.isArray(targets)) throw spotify.httpError(400, 'Missing source or targets');
 
-  const entries = await loadSource(req.sessionID, source);
+  const entries = await loadSource(req.auth, source);
   const byUri = new Map();
   let skippedLocal = 0;
 
@@ -215,15 +221,15 @@ api.post('/scan', async (req, res) => {
 api.post('/nuke', async (req, res) => {
   const { source, uris } = req.body;
   if (!source || !Array.isArray(uris)) throw spotify.httpError(400, 'Missing source or uris');
-  const sid = req.sessionID;
+  const auth = req.auth;
 
   if (source === 'liked') {
     for (const group of chunk(uris, 40)) {
-      await spotify.call(sid, 'delete', '/me/library', { params: { uris: group.join(',') } });
+      await spotify.call(auth, 'delete', '/me/library', { params: { uris: group.join(',') } });
     }
   } else {
     for (const group of chunk(uris, 100)) {
-      await spotify.call(sid, 'delete', `/playlists/${source}/items`, {
+      await spotify.call(auth, 'delete', `/playlists/${source}/items`, {
         data: { items: group.map(uri => ({ uri })) }
       });
     }
@@ -235,11 +241,11 @@ api.post('/nuke', async (req, res) => {
 api.post('/restore', async (req, res) => {
   const { source, items } = req.body;
   if (!source || !Array.isArray(items)) throw spotify.httpError(400, 'Missing source or items');
-  const sid = req.sessionID;
+  const auth = req.auth;
 
   if (source === 'liked') {
     for (const group of chunk(items.map(i => i.uri), 40)) {
-      await spotify.call(sid, 'put', '/me/library', { params: { uris: group.join(',') } });
+      await spotify.call(auth, 'put', '/me/library', { params: { uris: group.join(',') } });
     }
     return res.json({ restored: items.length });
   }
@@ -250,7 +256,7 @@ api.post('/restore', async (req, res) => {
     .flatMap(i => i.positions.map(position => ({ uri: i.uri, position })))
     .sort((a, b) => a.position - b.position);
 
-  const current = await spotify.call(sid, 'get', `/playlists/${source}/items`, { params: { limit: 1 } });
+  const current = await spotify.call(auth, 'get', `/playlists/${source}/items`, { params: { limit: 1 } });
   let length = current.total;
 
   const runs = [];
@@ -265,7 +271,7 @@ api.post('/restore', async (req, res) => {
 
   for (const run of runs) {
     const position = Math.min(run.start, length);
-    await spotify.call(sid, 'post', `/playlists/${source}/items`, { data: { uris: run.uris, position } });
+    await spotify.call(auth, 'post', `/playlists/${source}/items`, { data: { uris: run.uris, position } });
     length += run.uris.length;
   }
   res.json({ restored: placements.length });
@@ -276,7 +282,13 @@ app.use('/api', api);
 app.use((err, req, res, next) => {
   const status = err.status || 500;
   if (status >= 500) console.error(err);
+  if (status === 401) session.clearAuth(res);
   res.status(status).json({ error: err.message || 'Something went wrong' });
 });
 
-app.listen(PORT, () => console.log(`SpotifyNuke running on http://127.0.0.1:${PORT}`));
+// Vercel imports the app; locally we start the server ourselves.
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`SpotifyNuke running on http://127.0.0.1:${PORT}`));
+}
+
+module.exports = app;

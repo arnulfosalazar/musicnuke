@@ -30,7 +30,28 @@ Nuke an artist or song from your Spotify playlists. No fuss or hassle.
 
    Open http://127.0.0.1:8888 (use `127.0.0.1`, not `localhost`; Spotify no longer accepts `localhost` redirects).
 
-While the Spotify app is in Development Mode, only users added under **User Management** in the dashboard can log in.
+## Deploy to Vercel
+
+1. Import the repo into Vercel. No build settings are needed; Vercel detects the Express app in `index.js` and serves `public/` from its CDN.
+2. Add these environment variables in the Vercel project settings:
+
+   | Name | Value |
+   | --- | --- |
+   | `CLIENT_ID` | from the Spotify dashboard |
+   | `CLIENT_SECRET` | from the Spotify dashboard |
+   | `REDIRECT_URI` | `https://<your-domain>/callback` |
+   | `SESSION_SECRET` | a long random string (required; it encrypts the login cookie) |
+
+   Generate a secret with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+3. Add `https://<your-domain>/callback` as a redirect URI in the Spotify dashboard (keep the `127.0.0.1` one for local dev).
+4. Redeploy after changing environment variables.
+
+## Who can log in
+
+Spotify apps in Development Mode allow at most **5 users**, and the app owner needs Spotify Premium.
+Add each person's Spotify email under **User Management** in the dashboard. Anyone else sees
+"Your Spotify account hasn't been approved for this app yet." Spotify only grants Extended Quota
+(unlimited users) to registered businesses with 250k+ monthly active users.
 
 ## Options
 
