@@ -1,8 +1,8 @@
-# SpotifyNuke
+# MusicNuke
 
-Nuke an artist or song from your Spotify playlists. No fuss or hassle.
+Nuke an artist or song from your Spotify playlists. No fuss or hassle. Not affiliated with Spotify.
 
-**Live at [spotifynuke.vercel.app](https://spotifynuke.vercel.app)**
+**Live at [musicnuke.vercel.app](https://musicnuke.vercel.app)**
 
 1. Log in with Spotify.
 2. Search for the artists and songs to nuke. Hover an artist (or tap **i**) to check it's the right one when several share a name.
@@ -25,7 +25,7 @@ You need **Spotify Premium** (Spotify requires it for anyone who creates an app)
 1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and log in with your normal Spotify account.
 2. Click **Create app**:
    - **Name / description:** anything.
-   - **Redirect URI:** `https://spotifynuke.vercel.app/callback`, then click **Add**.
+   - **Redirect URI:** `https://musicnuke.vercel.app/callback`, then click **Add**.
    - **Which API are you planning to use?** tick **Web API**.
    - Agree to the terms and **Save**.
 3. Open **Settings → User Management** and add your name and Spotify email if it isn't listed.
@@ -123,4 +123,13 @@ Drop a `nuke.gif` into `public/` and it plays instead of the built-in animation.
 
 Since February 2026, Spotify apps in Development Mode allow at most 5 allowlisted users, and the owner needs Premium.
 Extended Quota (unlimited users) is only granted to registered businesses with 250k+ monthly active users.
-The "use your own app" option exists so anyone with Premium can still use SpotifyNuke.
+The "use your own app" option exists so anyone with Premium can still use MusicNuke.
+
+## Privacy & license
+
+MusicNuke has no database and no analytics. See the site's [Privacy & Terms](public/privacy.html) page for what it
+accesses and stores. The Inter font is served from the site itself (`public/fonts/`, SIL Open Font License) rather
+than from Google Fonts.
+
+The code is released under the [ISC License](LICENSE). MusicNuke is not affiliated with, endorsed by or sponsored
+by Spotify. Spotify is a trademark of Spotify AB.

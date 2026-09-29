@@ -1,9 +1,30 @@
+/* Inter is served from this site rather than Google Fonts, so visitors'
+   IP addresses aren't sent to Google. One variable font covers 400-800. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url(/fonts/inter-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url(/fonts/inter-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   --gold: #f0a202;
   --orange: #f18805;
   --terracotta: #d95d39;
   --navy: #0e1428;
   --teal: #7b9e89;
+  /* Darker terracotta so white text on it meets WCAG AA (4.5:1). */
+  --danger: #b94829;
 
   --bg: var(--navy);
   --surface: #161e38;
@@ -134,6 +155,51 @@ h2 {
 .login-option .btn { width: 100%; }
 .login-caption { font-size: 13px; color: var(--muted); }
 .login-caption a { color: var(--gold); }
+
+/* Fills the screen so the credits sit at the bottom. */
+#view-login {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 150px);
+  min-height: calc(100svh - 150px);
+}
+
+.credits {
+  margin: auto 0 0;
+  padding-top: 48px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+.credits p { margin: 0; }
+.credits p + p { margin-top: 6px; }
+.credits .sep { margin: 0 6px; }
+.credits a { color: var(--text); text-decoration: none; }
+.credits a:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Stack the byline on phones instead of wrapping mid-link. */
+@media (max-width: 480px) {
+  .byline .sep { display: none; }
+  .byline > span { display: block; }
+}
+
+/* ---------- Privacy & Terms ---------- */
+
+.brand-link { color: inherit; text-decoration: none; }
+
+.legal h1 { font-size: clamp(28px, 5vw, 36px); margin-top: 16px; }
+.legal h2 { margin: 40px 0 8px; }
+.legal h3 { font-size: 16px; margin: 24px 0 6px; }
+.legal p, .legal li { color: var(--muted); font-size: 15px; }
+.legal p { margin: 0 0 12px; }
+.legal ul { padding-left: 20px; margin: 0 0 12px; }
+.legal li + li { margin-top: 6px; }
+.legal b { color: var(--text); font-weight: 600; }
+.legal a { color: var(--gold); }
+.legal .back { display: inline-block; color: var(--muted); text-decoration: none; }
+.legal .back:hover { color: var(--gold); }
+.legal code { font-size: 13px; color: var(--text); }
+.legal .toc { display: flex; gap: 16px; margin-bottom: 8px; }
 
 /* ---------- Guide ---------- */
 
@@ -276,8 +342,8 @@ h2 {
 .btn-primary { background: var(--gold); color: var(--navy); }
 .btn-primary:hover:not(:disabled) { background: var(--orange); }
 
-.btn-danger { background: var(--terracotta); color: #fff; }
-.btn-danger:hover:not(:disabled) { background: #e56a45; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #c4502f; }
 
 .btn-ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
 .btn-ghost:hover:not(:disabled) { background: var(--surface); }
@@ -530,7 +596,7 @@ input[type="checkbox"]:disabled { opacity: 0.35; cursor: not-allowed; }
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  background: var(--terracotta);
+  background: var(--danger);
   color: #fff;
 }
 .mode.keep { background: var(--teal); color: var(--navy); }
@@ -801,7 +867,7 @@ input[type="checkbox"]:disabled { opacity: 0.35; cursor: not-allowed; }
   max-width: calc(100% - 32px);
   padding: 12px 18px;
   border-radius: 12px;
-  background: var(--terracotta);
+  background: var(--danger);
   color: #fff;
   font-weight: 500;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);

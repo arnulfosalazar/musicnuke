@@ -1,7 +1,7 @@
 {
-  "name": "spotifynuke",
+  "name": "musicnuke",
   "version": "1.0.0",
-  "description": "Nuke an artist from your playlists. No fuss or hassle.",
+  "description": "Nuke an artist or song from your Spotify playlists. No fuss or hassle.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

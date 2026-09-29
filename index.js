@@ -326,7 +326,7 @@ app.use((err, req, res, next) => {
 
 // Vercel imports the app; locally we start the server ourselves.
 if (require.main === module) {
-  app.listen(PORT, () => console.log(`SpotifyNuke running on http://127.0.0.1:${PORT}`));
+  app.listen(PORT, () => console.log(`MusicNuke running on http://127.0.0.1:${PORT}`));
 }
 
 module.exports = app;

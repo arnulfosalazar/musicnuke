@@ -3,10 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SpotifyNuke</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>MusicNuke</title>
+  <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☢</text></svg>">
 </head>
@@ -24,7 +22,7 @@
         <circle cx="12" cy="12" r="3.2" fill="currentColor"/>
         <circle cx="12" cy="12" r="2" fill="#0e1428"/>
       </svg>
-      <span>SpotifyNuke</span>
+      <span>MusicNuke</span>
     </div>
     <div class="user" id="user" hidden>
       <img id="user-avatar" alt="">
@@ -51,12 +49,24 @@
         </div>
         <p class="error" id="login-error" hidden></p>
       </div>
+      <footer class="credits">
+        <p class="byline">
+          <span>Created by <a href="https://arnulfosalazar.dev" target="_blank" rel="noopener">Arnulfo Salazar III</a></span>
+          <span class="sep" aria-hidden="true">·</span>
+          <span><a href="https://github.com/arnulfosalazar/musicnuke" target="_blank" rel="noopener">Source code on GitHub</a></span>
+        </p>
+        <p>
+          <a href="/privacy.html">Privacy &amp; Terms</a>
+          <span class="sep" aria-hidden="true">·</span>
+          Not affiliated with Spotify
+        </p>
+      </footer>
     </section>
 
     <!-- Own-app setup guide -->
     <section class="view" id="view-guide" hidden>
       <button class="link-btn back" data-go-login>← Back</button>
-      <h2>Use SpotifyNuke with your own Spotify app</h2>
+      <h2>Use MusicNuke with your own Spotify app</h2>
       <p class="muted">
         Spotify only lets each app have 5 approved users. You can get around that by creating your own
         free Spotify app and logging in through it. Takes about 5 minutes, and you only do it once.
@@ -73,7 +83,7 @@
           <h3>Create an app</h3>
           <p>Click <b>Create app</b> and fill it in:</p>
           <ul>
-            <li><b>App name / description:</b> anything, e.g. "My SpotifyNuke"</li>
+            <li><b>App name / description:</b> anything, e.g. "My MusicNuke"</li>
             <li><b>Redirect URI:</b> paste this exactly, then click <b>Add</b>:
               <div class="copy-field">
                 <code id="redirect-uri">…</code>
